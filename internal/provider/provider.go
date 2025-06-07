@@ -4,8 +4,8 @@ package provider
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -14,6 +14,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/infra-pilot/terraform-provider-infrapilot/internal/license"
+	"github.com/infra-pilot/terraform-provider-infrapilot/internal/telemetry"
 )
 
 type infrapilotProvider struct {
@@ -56,24 +59,30 @@ func (p *infrapilotProvider) Configure(ctx context.Context, req provider.Configu
 		return
 	}
 
-	if config.Token.IsUnknown() || config.Token.IsNull() {
-		resp.Diagnostics.AddError("Missing Token", "A token is required to use the InfraPilot provider.")
+	var token string
+	if !config.Token.IsUnknown() && !config.Token.IsNull() {
+		token = config.Token.ValueString()
+	}
+	if token == "" {
+		token = os.Getenv("INFRAPILOT_LICENSE_TOKEN")
+	}
+	if token == "" {
+		resp.Diagnostics.AddError("Missing Token", "A token must be provided via the provider configuration or INFRAPILOT_LICENSE_TOKEN environment variable.")
 		return
 	}
 
-	token := config.Token.ValueString()
-
-	if err := validateLicense(token); err != nil {
+	result, err := license.Validate(token)
+	if err != nil {
 		resp.Diagnostics.AddError("Invalid Token", fmt.Sprintf("Token validation failed: %s", err))
 		return
 	}
-}
 
-func validateLicense(token string) error {
-	if token != "valid-license-token" {
-		return errors.New("invalid or expired license token")
-	}
-	return nil
+	telemetry.Log(req.TerraformVersion, p.version, token)
+
+	resp.DataSourceData = token
+	resp.ResourceData = token
+
+	_ = result // result reserved for future use
 }
 
 func (p *infrapilotProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -91,6 +100,7 @@ func (p *infrapilotProvider) EphemeralResources(ctx context.Context) []func() ep
 func (p *infrapilotProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewExampleDataSource,
+		NewCheckAccessDataSource,
 	}
 }
 
