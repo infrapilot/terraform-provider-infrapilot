@@ -1,4 +1,5 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2025 InfraPilot, LLC
+// Originally derived from HashiCorp's terraform-provider-scaffolding-framework
 // SPDX-License-Identifier: MPL-2.0
 
 //go:build generate
@@ -6,8 +7,8 @@
 package tools
 
 import (
-	_ "github.com/hashicorp/copywrite"
-	_ "github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs"
+	_ "github.com/hashicorp/copywrite"                              //nolint:revive
+	_ "github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs" //nolint:revive
 )
 
 // Generate copyright headers
@@ -19,4 +20,4 @@ import (
 //go:generate terraform fmt -recursive ../examples/
 
 // Generate documentation.
-//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-dir .. -provider-name scaffolding
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-dir .. -provider-name infrapilot

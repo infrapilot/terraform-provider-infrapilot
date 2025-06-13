@@ -1,3 +1,7 @@
+# Copyright (c) 2025 InfraPilot, LLC
+# Originally derived from HashiCorp's terraform-provider-scaffolding-framework
+# SPDX-License-Identifier: MPL-2.0
+
 default: fmt lint install generate
 
 build:

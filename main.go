@@ -1,4 +1,6 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2025 InfraPilot, LLC
+// Originally derived from HashiCorp's terraform-provider-scaffolding-framework
+// SPDX-License-Identifier: MPL-2.0
 
 package main
 
@@ -7,9 +9,12 @@ import (
 	"flag"
 	"log"
 
+	"terraform-provider-infrapilot/internal/provider"
+
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/infra-pilot/terraform-provider-infrapilot/internal/provider"
 )
+
+var version = "dev" // will be overridden at build time via ldflags
 
 func main() {
 	var debug bool
@@ -22,9 +27,7 @@ func main() {
 		Debug:   debug,
 	}
 
-	err := providerserver.Serve(context.Background(), provider.New("dev"), opts)
-
-	if err != nil {
-		log.Fatal(err.Error())
+	if err := providerserver.Serve(context.Background(), provider.New(version), opts); err != nil {
+		log.Fatalf("error running provider: %s", err)
 	}
 }

@@ -1,64 +1,116 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+# InfraPilot Terraform Provider
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://developer.hashicorp.com/terraform/plugin/framework-benefits) in the Terraform documentation for additional information._
+The **InfraPilot Terraform Provider** enables licensed access to the InfraPilot module ecosystem, enforcing license validation and surfacing metadata like organization ID and subscription tier.
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
+This provider is used internally by InfraPilot modules to verify usage rights, validate licenses, and enable tier-specific functionality. It acts as a **lightweight gateway** to the InfraPilot ecosystem and is required when consuming any InfraPilot-managed Terraform module.
 
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
+---
 
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Developer](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
+## 🔐 Why InfraPilot?
 
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
+InfraPilot offers a curated, enterprise-grade library of Terraform modules that:
 
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://developer.hashicorp.com/terraform/registry/providers/publishing) so that others can use it.
+* Follow best practices and opinionated design patterns
+* Are versioned, tested, and continuously validated
+* Include built-in CI/CD, IAM, and policy hooks
+* Require license validation to ensure proper use
 
-## Requirements
+This provider validates a license token (JWT) issued by the InfraPilot license server and enables downstream modules to introspect tier metadata (e.g., `pro`, `enterprise`, etc.).
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.23
+---
 
-## Building The Provider
+## 🚀 Getting Started
 
-1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
+### Installation
 
-```shell
+Add the provider to your Terraform configuration:
+
+```hcl
+terraform {
+  required_providers {
+    infrapilot = {
+      source  = "infra-pilot/infrapilot"
+      version = ">= 0.1.0"
+    }
+  }
+}
+
+provider "infrapilot" {
+  token = var.infrapilot_license_token
+}
+```
+
+You can also set the license token via environment variable:
+
+```bash
+export INFRAPILOT_TOKEN="your-jwt-license-token"
+```
+
+---
+
+### Example Usage
+
+```hcl
+data "infrapilot_license_check" "this" {
+  module = "your_module_name"
+}
+
+output "org_id" {
+  value = data.infrapilot_license_check.this.org_id
+}
+
+output "tier" {
+  value = data.infrapilot_license_check.this.tier
+}
+```
+
+---
+
+## 🧪 Developing the Provider
+
+### Requirements
+
+* [Go](https://golang.org/dl/) 1.23+
+* [Terraform](https://developer.hashicorp.com/terraform/downloads) 1.0+
+
+### Build Locally
+
+```bash
 go install
 ```
 
-## Adding Dependencies
+### Run Tests
 
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
-
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
-
-```shell
-go get github.com/author/dependency
-go mod tidy
-```
-
-Then commit the changes to `go.mod` and `go.sum`.
-
-## Using the provider
-
-Fill this in for each provider
-
-## Developing the Provider
-
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
-
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
-
-To generate or update documentation, run `make generate`.
-
-In order to run the full suite of Acceptance tests, run `make testacc`.
-
-*Note:* Acceptance tests create real resources, and often cost money to run.
-
-```shell
+```bash
 make testacc
 ```
+
+Tests use the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) and include unit and acceptance coverage.
+
+> Note: Acceptance tests do not create cloud resources but do simulate full provider evaluation behavior.
+
+### Generate Docs
+
+```bash
+make generate
+```
+
+This updates the `docs/` directory based on your schema definitions.
+
+---
+
+## 📦 Publishing
+
+The provider is published to the [Terraform Registry](https://registry.terraform.io/providers/infra-pilot/infrapilot/latest). If you are building your own fork, update the `main.go` with your appropriate `ServeOpts.Address`.
+
+---
+
+## 📝 License
+
+This project is licensed under the [Mozilla Public License 2.0 (MPL-2.0)](LICENSE). It incorporates portions of the HashiCorp provider scaffolding, also licensed under MPL-2.0.
+
+---
+
+## 🤝 Support
+
+If you're an InfraPilot customer, please refer to your support plan or license documentation. For general issues or feature requests, open a GitHub issue in this repository.
