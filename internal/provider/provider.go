@@ -56,7 +56,7 @@ func (p *infraPilotProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 		Attributes: map[string]schema.Attribute{
 			"token": schema.StringAttribute{
 				Description: "JWT token (valid for 7 days) used for license validation. May also be provided via INFRAPILOT_TOKEN env var.",
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
 			},
 		},
@@ -77,60 +77,44 @@ func (p *infraPilotProvider) Configure(ctx context.Context, req provider.Configu
 		return
 	}
 
-	if config.Token.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("token"),
-			"Unknown InfraPilot Token",
-			"The provider cannot be created as there is an unknown configuration value for the InfraPilot token. "+
-				"Either set the value statically in the configuration or use the INFRAPILOT_TOKEN environment variable.",
-		)
-	}
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	token := os.Getenv("INFRAPILOT_TOKEN")
-
-	if !config.Token.IsNull() {
+	// Determine token value (prefer explicit config, fallback to env var)
+	var token string
+	if !config.Token.IsNull() && !config.Token.IsUnknown() {
 		token = config.Token.ValueString()
+	} else {
+		token = os.Getenv("INFRAPILOT_TOKEN")
 	}
 
 	if token == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("token"),
 			"Missing InfraPilot Token",
-			"The provider cannot be created as there is a missing value for the InfraPilot token. "+
-				"Set the token value in the configuration or use the INFRAPILOT_TOKEN environment variable."+
-				"If either is already set, ensure the value is not empty.",
+			"The provider cannot be created as no token was found. Provide it either via the 'token' argument in the provider block or the INFRAPILOT_TOKEN environment variable.",
 		)
-	}
-
-	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	// Mask token for logs
 	ctx = tflog.SetField(ctx, "infrapilot_token", token)
 	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "infrapilot_token")
 
 	tflog.Debug(ctx, "Using JWT token for InfraPilot authentication")
 
+	// Validate the token using the configured validator
 	claims, err := p.jwtValidator(token, jwksURL)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Validate InfraPilot Token",
-			"An unexpected error occurred when validating the InfraPilot token. "+
-				"If the error is not clear, please contact the provider developers.\n\n"+
-				"InfraPilot Token Error: "+err.Error(),
+			"An error occurred while validating the InfraPilot token:\n\n"+err.Error(),
 		)
 		return
 	}
 
+	// Pass claims to downstream resources/datasources
 	resp.DataSourceData = &model.LicenseMetadata{
 		OrgID: types.StringValue(claims.OrgID),
 		Tier:  types.StringValue(claims.Tier),
 	}
-
 	resp.ResourceData = claims
 
 	tflog.Info(ctx, "Configured InfraPilot client", map[string]any{"success": true})
